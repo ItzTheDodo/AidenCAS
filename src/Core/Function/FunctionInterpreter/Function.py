@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from Core.Function.FunctionInterpreter.FunctionAST import FunctionAST
+from Core.Namespace.Namespace import Namespace
+from Core.Set.Interval import Interval
+from Core.Set.IntervalSet import IntervalSet
+
+
+class Function:
+
+    def __init__(self, raw_function: str, namespace: Namespace | None = None):
+
+        self._raw_function = raw_function
+        self._namespace = namespace if namespace is not None else Namespace("local")
+
+        # attributes
+        self._name: str = ""
+        self._domain: str = ""
+        self._codomain: str = ""
+        self._function_ast: FunctionAST | None = None
+
+        self._argument_variables: list[str] = []
+
+        print(f"Parsing function: {raw_function}")
+
+        if namespace is not None:
+            print(f"Using namespace: {namespace.name}")
+
+        self._tokenize()
+
+    def _tokenize(self):
+        try:
+            domain_definition, mapping_definition = self._raw_function.split(";", maxsplit=1)
+        except ValueError:
+            raise ValueError(f"Invalid function definition: {self._raw_function}. Expected format: 'name: domain -> codomain; mapping'")
+        domain_definition = domain_definition.strip()
+        mapping_definition = mapping_definition.strip()
+
+        # domain parsing
+        try:
+            name, domain_mapping = domain_definition.split(":", maxsplit=1)
+        except ValueError:
+            raise ValueError(f"Invalid function definition: {self._raw_function}. Expected format: 'name: domain -> codomain; mapping'")
+        self._name = name.strip()
+        try:
+            domain, codomain = domain_mapping.split("->", maxsplit=1)
+        except ValueError:
+            raise ValueError(f"Invalid function definition: {self._raw_function}. Expected format: 'name: domain -> codomain; mapping'")
+        self._domain = domain.strip()
+        self._codomain = codomain.strip()
+
+        # check domain and codomain are valid, if not add them to the namespace
+        if self._domain not in self._namespace.sets.keys():
+            self.namespace.add_set(self._domain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+        if self._codomain not in self._namespace.sets.keys():
+            self.namespace.add_set(self._codomain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+
+        mapping_definition = mapping_definition.strip()
+
+        try:
+            actioning_variables, expression = mapping_definition.split("->", maxsplit=1)
+        except ValueError:
+            raise ValueError(f"Invalid mapping definition: {mapping_definition}. Expected format: 'variable -> expression'")
+
+        self._argument_variables = [var.strip() for var in actioning_variables.split(",") if var.strip()]
+
+        self._function_ast = FunctionAST.from_mapping(expression.strip(), self.namespace, self._argument_variables)
+
+    @property
+    def namespace(self):
+        return self._namespace
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def domain(self) -> str:
+        return self._domain
+
+    @property
+    def codomain(self) -> str:
+        return self._codomain
+
+    def get_amount_of_arguments(self) -> int:
+        return len(self._argument_variables)
+
+    @classmethod
+    def from_file(cls, file_path: str) -> list[Function]:
+        with open(file_path, "r") as f:
+            raw_function = f.read()
+        return [cls(function) for function in raw_function.splitlines() if function.strip()]
+
+    def __str__(self) -> str:
+        return self._raw_function
+
+    def __repr__(self) -> str:
+        return f"Function(name={self._name}, domain={self._domain}, codomain={self._codomain})"
+
+
+if __name__ == "__main__":
+    functions = Function.from_file("example_function")
+    print(functions)
+
