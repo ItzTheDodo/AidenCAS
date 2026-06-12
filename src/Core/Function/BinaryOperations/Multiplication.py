@@ -130,6 +130,12 @@ class Multiplication(BinaryOperation):
     def invert(self, *n: float) -> Set:
         return self.invert(FiniteSet(*n))
 
+    def __str__(self) -> str:
+        return "Multiplication()"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 if __name__ == "__main__":
     from Core.Set.Integers import Integers

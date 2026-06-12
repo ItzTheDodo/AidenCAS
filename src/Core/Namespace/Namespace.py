@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from Core.Function.BinaryOperations.Addition import Addition
 from Core.Function.BinaryOperations.BinaryOperation import BinaryOperation
+from Core.Function.BinaryOperations.Division import Division
 from Core.Function.BinaryOperations.Multiplication import Multiplication
+from Core.Function.BinaryOperations.Subtraction import Subtraction
 from Core.Set.Integers import Integers
 from Core.Set.Interval import Interval
 from Core.Set.IntervalSet import IntervalSet
@@ -40,7 +42,9 @@ class Namespace:
         self.add_set("|R", IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
 
         self.add_binary_operation(Addition().name, Addition())
+        self.add_binary_operation(Subtraction().name, Subtraction())
         self.add_binary_operation(Multiplication().name, Multiplication())
+        self.add_binary_operation(Division().name, Division())
 
     def clear(self):
         self._variables.clear()

@@ -64,6 +64,7 @@ class Function:
 
         self._function_ast = FunctionAST.from_mapping(expression.strip(), self.namespace, self._argument_variables)
         print(f"Parsed function AST: \n{self._function_ast}")
+        print(FunctionAST.simplify(self._function_ast))
 
     @property
     def namespace(self):
@@ -84,6 +85,14 @@ class Function:
     def get_amount_of_arguments(self) -> int:
         return len(self._argument_variables)
 
+    @property
+    def argument_variables(self) -> list[str]:
+        return self._argument_variables
+
+    @property
+    def function_ast(self) -> FunctionAST:
+        return self._function_ast
+
     @classmethod
     def from_file(cls, file_path: str, namespace: Optional[Namespace] = None) -> list[Function]:
         namespace = namespace if namespace is not None else Namespace("local")
@@ -96,6 +105,14 @@ class Function:
 
     def __repr__(self) -> str:
         return f"Function(name={self._name}, domain={self._domain}, codomain={self._codomain})"
+
+    def evaluate(self, *n: float) -> float:
+        if len(n) != self.get_amount_of_arguments():
+            raise ValueError(f"Expected {self.get_amount_of_arguments()} arguments, got {len(n)}")
+        local_namespace = Namespace(f"{self.name}_evaluation")
+        for var, value in zip(self._argument_variables, n):
+            local_namespace.add_variable(var, value)
+        return self._function_ast.evaluate(local_namespace)
 
 
 if __name__ == "__main__":
