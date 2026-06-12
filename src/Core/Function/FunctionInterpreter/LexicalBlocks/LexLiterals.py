@@ -49,3 +49,15 @@ class OpenBracket(LexicalBlock):
     def __repr__(self) -> str:
         return self.__str__()
 
+
+class Comma(LexicalBlock):
+
+    def __init__(self, char: str):
+        super().__init__(char, LexicalBlockType.LITERAL, precedence=OperationPrecedence.COMMA)
+
+    def __str__(self) -> str:
+        return f"Comma()"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+

@@ -35,8 +35,12 @@ class LexicalBlock:
     def operation(self) -> Optional[Function | BinaryOperation]:
         return self._operation
 
+    @property
+    def precedence(self) -> int:
+        return self._precedence
+
     def __str__(self) -> str:
-        return f"LexicalBlock({self.char}, {self.type}, {self.operation})"
+        return f"LexicalBlock({self.char}, {self.type}, {self.precedence}, {self.operation})"
 
     def __repr__(self) -> str:
         return self.__str__()

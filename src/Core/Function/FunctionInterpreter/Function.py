@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from Core.Function.FunctionInterpreter.FunctionAST import FunctionAST
 from Core.Namespace.Namespace import Namespace
 from Core.Set.Interval import Interval
@@ -8,27 +10,19 @@ from Core.Set.IntervalSet import IntervalSet
 
 class Function:
 
-    def __init__(self, raw_function: str, namespace: Namespace | None = None):
+    def __init__(self, raw_function: str, namespace: Optional[Namespace] = None):
 
         self._raw_function = raw_function
         self._namespace = namespace if namespace is not None else Namespace("local")
-
-        # attributes
-        self._name: str = ""
-        self._domain: str = ""
-        self._codomain: str = ""
-        self._function_ast: FunctionAST | None = None
-
-        self._argument_variables: list[str] = []
 
         print(f"Parsing function: {raw_function}")
 
         if namespace is not None:
             print(f"Using namespace: {namespace.name}")
 
-        self._tokenize()
+        self._compile()
 
-    def _tokenize(self):
+    def _compile(self):
         try:
             domain_definition, mapping_definition = self._raw_function.split(";", maxsplit=1)
         except ValueError:
@@ -42,6 +36,10 @@ class Function:
         except ValueError:
             raise ValueError(f"Invalid function definition: {self._raw_function}. Expected format: 'name: domain -> codomain; mapping'")
         self._name = name.strip()
+
+        # register self function in namespace, so it can be used in its own mapping definition
+        self.namespace.add_function(self._name, self)
+
         try:
             domain, codomain = domain_mapping.split("->", maxsplit=1)
         except ValueError:
@@ -65,6 +63,7 @@ class Function:
         self._argument_variables = [var.strip() for var in actioning_variables.split(",") if var.strip()]
 
         self._function_ast = FunctionAST.from_mapping(expression.strip(), self.namespace, self._argument_variables)
+        print(f"Parsed function AST: \n{self._function_ast}")
 
     @property
     def namespace(self):
@@ -86,10 +85,11 @@ class Function:
         return len(self._argument_variables)
 
     @classmethod
-    def from_file(cls, file_path: str) -> list[Function]:
+    def from_file(cls, file_path: str, namespace: Optional[Namespace] = None) -> list[Function]:
+        namespace = namespace if namespace is not None else Namespace("local")
         with open(file_path, "r") as f:
             raw_function = f.read()
-        return [cls(function) for function in raw_function.splitlines() if function.strip()]
+        return [cls(function, namespace) for function in raw_function.splitlines() if function.strip() and not function.strip().startswith("#")]
 
     def __str__(self) -> str:
         return self._raw_function
