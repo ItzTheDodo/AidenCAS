@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import overload
 
 from Core.Function.BinaryOperations.Addition import Addition
 from Core.Function.BinaryOperations.Division import Division
@@ -60,6 +61,10 @@ class FunctionAST:
 
     @staticmethod
     def extract_coefficient(node) -> tuple[float, FunctionASTNode]:
+        if isinstance(node.actual, LexUnaryOperation) and isinstance(node.actual.operation, Negation):
+            coeff, base = FunctionAST.extract_coefficient(node.children[0])
+            return -coeff, base
+
         # x -> (1, x)
         if isinstance(node.actual, Identifier):
             return 1, node
@@ -87,6 +92,16 @@ class FunctionAST:
 
             return coefficient, FunctionAST._build_binary_chain(node.actual, remaining_factors)
 
+        if (
+            isinstance(node.actual, LexBinaryOperation)
+            and isinstance(node.actual.operation, Division)
+        ):
+            numerator, denominator = node.children
+            if isinstance(denominator.actual, Literal):
+                denominator_value = float(denominator.actual.char)
+                if denominator_value != 0:
+                    return 1 / denominator_value, numerator
+
         # everything else treated as coefficient 1
         return 1, node
 
@@ -107,6 +122,27 @@ class FunctionAST:
             result.append(node)
 
         return result
+
+    @staticmethod
+    def _collect_signed_terms(node: FunctionASTNode, sign: float = 1.0) -> list[tuple[float, FunctionASTNode]]:
+        if isinstance(node.actual, LexUnaryOperation) and isinstance(node.actual.operation, Negation):
+            return FunctionAST._collect_signed_terms(node.children[0], -sign)
+
+        if isinstance(node.actual, LexBinaryOperation):
+            if isinstance(node.actual.operation, Addition):
+                terms: list[tuple[float, FunctionASTNode]] = []
+                for child in node.children:
+                    terms.extend(FunctionAST._collect_signed_terms(child, sign))
+                return terms
+
+            if isinstance(node.actual.operation, Subtraction):
+                left, right = node.children
+                return (
+                    FunctionAST._collect_signed_terms(left, sign)
+                    + FunctionAST._collect_signed_terms(right, -sign)
+                )
+
+        return [(sign, node)]
 
     @staticmethod
     def _clone_node(node: FunctionASTNode) -> FunctionASTNode:
@@ -152,6 +188,10 @@ class FunctionAST:
             new_root.children = [root, child]
             root = new_root
         return root
+
+    @staticmethod
+    def _build_add_chain(children: list[FunctionASTNode]) -> FunctionASTNode:
+        return FunctionAST._build_binary_chain(LexBinaryOperation("+", Addition().precedence, Addition()), children)
 
     @staticmethod
     def _make_binary_node(operation, left: FunctionASTNode, right: FunctionASTNode) -> FunctionASTNode:
@@ -219,22 +259,23 @@ class FunctionAST:
                 operation = node.actual.operation
                 simplified_children = [simplify_node(child) for child in node.children]
 
-                if isinstance(operation, Addition):
-                    flattened: list[FunctionASTNode] = []
-                    for child in simplified_children:
-                        flattened.extend(FunctionAST._flatten_associative(child, operation))
+                if isinstance(operation, (Addition, Subtraction)):
+                    additive_node = FunctionASTNode(node.actual)
+                    additive_node.children = simplified_children
+                    flattened = FunctionAST._collect_signed_terms(additive_node)
 
                     literal_total = 0.0
                     grouped: dict[str, tuple[float, FunctionASTNode]] = {}
                     ordered_terms: list[FunctionASTNode] = []
 
-                    for term in flattened:
+                    for sign, term in flattened:
                         if isinstance(term.actual, Literal):
-                            literal_total += float(term.actual.char)
+                            literal_total += sign * float(term.actual.char)
                             continue
 
                         coeff, base = FunctionAST.extract_coefficient(term)
                         base = simplify_node(base)
+                        coeff *= sign
                         key = FunctionAST._signature(base)
                         if key in grouped:
                             existing_coeff, existing_base = grouped[key]
@@ -251,6 +292,9 @@ class FunctionAST:
                         if coeff == 1:
                             ordered_terms.append(base)
                             continue
+                        if coeff == -1:
+                            ordered_terms.append(FunctionAST._make_unary_node(Negation(), base))
+                            continue
                         coeff_node = FunctionAST._literal_node(coeff)
                         ordered_terms.append(FunctionAST._make_binary_node(Multiplication(), coeff_node, base))
 
@@ -261,7 +305,7 @@ class FunctionAST:
                     if len(ordered_terms) == 1:
                         return ordered_terms[0]
 
-                    return FunctionAST._build_binary_chain(node.actual, ordered_terms)
+                    return FunctionAST._build_add_chain(ordered_terms)
 
                 if isinstance(operation, Multiplication):
                     flattened: list[FunctionASTNode] = []
@@ -346,6 +390,9 @@ class FunctionAST:
             return new_node
 
         return FunctionAST(simplify_node(ast.root))
+
+    def simplify_ast(self) -> FunctionAST:
+        return FunctionAST.simplify(self)
 
     @staticmethod
     def tokenise(expression: str, namespace: Namespace, argument_variables: list[str]) -> list[LexicalBlock]:
@@ -612,6 +659,25 @@ class FunctionAST:
         output = cls(output_stack[0])
         FunctionAST._check_function_arguments(output)
         return output
+
+    def get_raw_expression(self) -> str:
+        def build_expression(node: FunctionASTNode) -> str:
+            if isinstance(node.actual, Literal):
+                return node.actual.char
+            if isinstance(node.actual, Identifier):
+                return node.actual.char
+            if isinstance(node.actual, LexFunction):
+                args = ",".join(build_expression(child) for child in node.children)
+                return f"{node.actual.char}({args})"
+            if isinstance(node.actual, LexUnaryOperation):
+                return f"({node.actual.char}{build_expression(node.children[0])})"
+            if isinstance(node.actual, LexBinaryOperation):
+                left = build_expression(node.children[0])
+                right = build_expression(node.children[1])
+                return f"({left}{node.actual.char}{right})"
+            raise ValueError(f"Unsupported AST node type: {type(node.actual).__name__}")
+
+        return build_expression(self.root)
 
     def __str__(self) -> str:
         def display_node(node: FunctionASTNode, indent: str = "") -> str:

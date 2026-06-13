@@ -62,9 +62,11 @@ class Function:
 
         self._argument_variables = [var.strip() for var in actioning_variables.split(",") if var.strip()]
 
+        if not len(self._argument_variables) == len(set(self._argument_variables)):
+            raise ValueError(f"Invalid mapping definition: {mapping_definition}. Duplicate variables found in {self._argument_variables}")
+
         self._function_ast = FunctionAST.from_mapping(expression.strip(), self.namespace, self._argument_variables)
         print(f"Parsed function AST: \n{self._function_ast}")
-        print(FunctionAST.simplify(self._function_ast))
 
     @property
     def namespace(self):
@@ -101,7 +103,7 @@ class Function:
         return [cls(function, namespace) for function in raw_function.splitlines() if function.strip() and not function.strip().startswith("#")]
 
     def __str__(self) -> str:
-        return self._raw_function
+        return self.function_ast.get_raw_expression()
 
     def __repr__(self) -> str:
         return f"Function(name={self._name}, domain={self._domain}, codomain={self._codomain})"
@@ -118,4 +120,12 @@ class Function:
 if __name__ == "__main__":
     functions = Function.from_file("example_function")
     print(functions)
+    f = functions[-1]
+    print(f.name)
+    print(f.domain)
+    print(f.codomain)
+    print(f.argument_variables)
+    print(f.evaluate(0.1))
+    print(f.function_ast.get_raw_expression())
+    print(f.function_ast.simplify_ast().get_raw_expression())
 
