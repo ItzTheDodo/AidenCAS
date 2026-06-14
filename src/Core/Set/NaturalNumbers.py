@@ -8,10 +8,13 @@ from Core.Set.IntervalSet import IntervalSet
 class NaturalNumbers(IntervalSet):
 
     def __init__(self, *intervals):
-        negative_numbers = IntervalSet(Interval(float("-inf"), 1, True, True))
-        nn_intervals_set = IntervalSet(*intervals)
-        new_intervals = nn_intervals_set.without(negative_numbers)
-        super().__init__(*new_intervals.intervals)
+        if not intervals:
+            super().__init__(Interval(1, float("inf"), False, True))
+        else:
+            negative_numbers = IntervalSet(Interval(float("-inf"), 1, True, True))
+            nn_intervals_set = IntervalSet(*intervals)
+            new_intervals = nn_intervals_set.without(negative_numbers)
+            super().__init__(*new_intervals.intervals)
 
         self._nn_clean()
 
@@ -30,7 +33,8 @@ class NaturalNumbers(IntervalSet):
         return f"Natural Numbers({self.intervals})"
 
     def contains(self, element: float) -> bool:
-        return super().contains(element) and element.is_integer()
+        numeric_element = float(element)
+        return super().contains(numeric_element) and numeric_element.is_integer()
 
     def union(self, other: IntervalSet) -> NaturalNumbers:
         return NaturalNumbers(*super().union(other).intervals)

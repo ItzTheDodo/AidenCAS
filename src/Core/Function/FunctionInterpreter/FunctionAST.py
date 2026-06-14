@@ -9,12 +9,16 @@ from Core.Function.FunctionInterpreter.ASTNodes import (
     FunctionCallNode,
     IdentifierNode,
     LiteralNode,
+    _literal,
+    ProductNode,
+    SummationNode,
+    _substitute,
     SimplificationContext,
     UnaryOperationNode,
 )
 from Core.Function.FunctionInterpreter.LexicalBlocks.LexBinaryOperation import LexBinaryOperation
 from Core.Function.FunctionInterpreter.LexicalBlocks.LexFunction import LexFunction
-from Core.Function.FunctionInterpreter.LexicalBlocks.LexLiterals import Comma, CloseBracket, Identifier, Literal, OpenBracket
+from Core.Function.FunctionInterpreter.LexicalBlocks.LexLiterals import Comma, CloseBracket, Identifier, Infinity, Literal, MatrixLiteral, OpenBracket
 from Core.Function.FunctionInterpreter.LexicalBlocks.LexicalBlock import LexicalBlock
 from Core.Function.FunctionInterpreter.LexicalBlocks.LexUnaryOperation import LexUnaryOperation
 from Core.Namespace.Namespace import Namespace
@@ -84,6 +88,11 @@ class FunctionAST:
                     expecting_operand = False
                     continue
 
+                if name in {"inf", "infinity"}:
+                    tokens.append(Literal("inf"))
+                    expecting_operand = False
+                    continue
+
                 if namespace.is_in_function_namespace(name):
                     lookahead = i
                     while lookahead < len(expression) and expression[lookahead].isspace():
@@ -94,7 +103,18 @@ class FunctionAST:
                     expecting_operand = True
                     continue
 
-                raise ValueError(f"Unknown identifier or function name: {name}")
+                lookahead = i
+                while lookahead < len(expression) and expression[lookahead].isspace():
+                    lookahead += 1
+                if lookahead < len(expression) and expression[lookahead] == "(":
+                    namespace.reserve_function(name)
+                    tokens.append(LexFunction(name, namespace.functions[name]))
+                    expecting_operand = True
+                    continue
+
+                tokens.append(Identifier(name))
+                expecting_operand = False
+                continue
 
             if character == "(":
                 tokens.append(OpenBracket(character))
@@ -112,6 +132,25 @@ class FunctionAST:
                 tokens.append(Comma(character))
                 i += 1
                 expecting_operand = True
+                continue
+
+            if character == "[":
+                start = i
+                depth = 0
+                while i < len(expression):
+                    current = expression[i]
+                    if current == "[":
+                        depth += 1
+                    elif current == "]":
+                        depth -= 1
+                        if depth == 0:
+                            i += 1
+                            tokens.append(MatrixLiteral(expression[start:i]))
+                            expecting_operand = False
+                            break
+                    i += 1
+                else:
+                    raise ValueError(f"Malformed expression: {expression}, matrix literal not closed")
                 continue
 
             if character == "-" and expecting_operand:
@@ -187,16 +226,96 @@ class FunctionAST:
 
         arguments = [output_stack.pop() for _ in range(arity)]
         arguments.reverse()
-        output_stack.append(FunctionCallNode(operator.operation, tuple(arguments)))
+        if hasattr(operator.operation, "build_node"):
+            output_stack.append(operator.operation.build_node(tuple(arguments)))
+        else:
+            output_stack.append(FunctionCallNode(operator.operation, tuple(arguments)))
 
     @staticmethod
     def _check_function_arguments(node: ExpressionNode):
         """Ensure the parsed call arity matches the referenced function."""
         if isinstance(node, FunctionCallNode):
+            if not getattr(node.function, "is_resolved", True):
+                return
             if len(node.arguments) != node.function.get_amount_of_arguments():
                 raise ValueError(f"Malformed expression: function '{node.function.name}' does not have expected arguments")
         for child in node.children:
             FunctionAST._check_function_arguments(child)
+
+    @staticmethod
+    def _split_top_level(text: str, delimiter: str = ",") -> list[str]:
+        parts: list[str] = []
+        current: list[str] = []
+        paren_depth = 0
+        bracket_depth = 0
+        for char in text:
+            if char == "(":
+                paren_depth += 1
+            elif char == ")":
+                paren_depth -= 1
+            elif char == "[":
+                bracket_depth += 1
+            elif char == "]":
+                bracket_depth -= 1
+
+            if char == delimiter and paren_depth == 0 and bracket_depth == 0:
+                part = "".join(current).strip()
+                if part:
+                    parts.append(part)
+                current = []
+                continue
+
+            current.append(char)
+
+        if paren_depth != 0 or bracket_depth != 0:
+            raise ValueError("Malformed matrix literal")
+
+        tail = "".join(current).strip()
+        if tail:
+            parts.append(tail)
+        return parts
+
+    @classmethod
+    def _parse_matrix_literal(cls, literal: str) -> LiteralNode:
+        inner = literal.strip()
+        if not inner.startswith("[") or not inner.endswith("]"):
+            raise ValueError(f"Malformed matrix literal: {literal}")
+
+        inner = inner[1:-1].strip()
+        if not inner:
+            raise ValueError("Matrix literals cannot be empty")
+
+        row_sources = cls._split_top_level(inner)
+        if "[" not in inner and "]" not in inner:
+            row_sources = [inner]
+
+        rows: list[tuple[float, ...]] = []
+        expected_width: int | None = None
+        for row_source in row_sources:
+            row_text = row_source.strip()
+            if "[" in inner or "]" in inner:
+                if not row_text.startswith("[") or not row_text.endswith("]"):
+                    raise ValueError(f"Malformed matrix literal row: {row_source}")
+                row_text = row_text[1:-1].strip()
+            entries = [entry.strip() for entry in cls._split_top_level(row_text)]
+            if not entries:
+                raise ValueError("Matrix rows cannot be empty")
+
+            row: list[float] = []
+            for entry in entries:
+                if entry in {"inf", "infinity"}:
+                    row.append(float("inf"))
+                else:
+                    row.append(float(entry))
+
+            if expected_width is None:
+                expected_width = len(row)
+            elif len(row) != expected_width:
+                raise ValueError("Matrix rows must all have the same length")
+
+            rows.append(tuple(row))
+
+        return _literal(tuple(rows))
 
     @classmethod
     def from_mapping(cls, expression: str, namespace: Namespace, argument_variables: list[str]) -> FunctionAST:
@@ -224,9 +343,18 @@ class FunctionAST:
                 cls._reduce_operator(output_stack, operator_stack.pop())
 
         for token in lex_tokens:
+            if isinstance(token, MatrixLiteral):
+                output_stack.append(cls._parse_matrix_literal(token.char))
+                mark_argument_seen()
+                reduce_prefix_unary()
+                continue
+
             if isinstance(token, (Literal, Identifier)):
                 if isinstance(token, Literal):
-                    output_stack.append(LiteralNode(float(token.char)))
+                    if token.char in {"inf", "infinity"}:
+                        output_stack.append(LiteralNode(float("inf")))
+                    else:
+                        output_stack.append(LiteralNode(float(token.char)))
                 else:
                     output_stack.append(IdentifierNode(token.char))
                 mark_argument_seen()
@@ -239,8 +367,10 @@ class FunctionAST:
 
             if isinstance(token, OpenBracket):
                 operator_stack.append(token)
-                if len(operator_stack) >= 2 and isinstance(operator_stack[-2], LexFunction):
-                    call_stack.append(_FunctionCallContext())
+                if len(operator_stack) >= 2:
+                    previous = operator_stack[-2]
+                    if isinstance(previous, LexFunction):
+                        call_stack.append(_FunctionCallContext())
                 continue
 
             if isinstance(token, Comma):
@@ -250,7 +380,6 @@ class FunctionAST:
                 reduce_until_open_bracket()
                 if not call_stack[-1].has_argument:
                     raise ValueError(f"Malformed expression: {expression}, missing function argument before comma")
-
                 call_stack[-1].arity += 1
                 call_stack[-1].has_argument = False
                 continue
@@ -291,7 +420,13 @@ class FunctionAST:
                 while (
                     operator_stack
                     and isinstance(operator_stack[-1], LexBinaryOperation)
-                    and operator_stack[-1].precedence <= token.precedence
+                    and (
+                        operator_stack[-1].precedence < token.precedence
+                        or (
+                            operator_stack[-1].precedence == token.precedence
+                            and not token.operation.right_associative
+                        )
+                    )
                 ):
                     cls._reduce_operator(output_stack, operator_stack.pop())
 
@@ -317,9 +452,17 @@ class FunctionAST:
         """Return a simplified copy of this AST."""
         return FunctionAST(self.root.simplify(context if context is not None else SimplificationContext()))
 
+    def canonical_simplify_ast(self) -> FunctionAST:
+        """Return the AST in canonical simplified form."""
+        return self.simplify_ast(SimplificationContext())
+
+    def substitute(self, mapping: dict[str, ExpressionNode]) -> FunctionAST:
+        """Return a new AST with identifiers replaced by expression trees."""
+        return FunctionAST(_substitute(self.root, mapping))
+
     def derivative(self, variable: str) -> FunctionAST:
         """Return a new AST representing the derivative of this AST with respect to a variable."""
-        pass
+        return FunctionAST(self.root.derivative(variable).simplify(SimplificationContext()))
 
     @staticmethod
     def simplify(ast: FunctionAST) -> FunctionAST:

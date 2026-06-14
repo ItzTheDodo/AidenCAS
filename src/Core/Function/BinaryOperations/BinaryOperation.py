@@ -5,7 +5,7 @@ from Core.Set.Set import Set
 
 class BinaryOperation:
 
-    def __init__(self, name: str, identity: float, associative: bool = True, commutative: bool = True, zero: float = 0, precedence: int = 5):
+    def __init__(self, name: str, identity: float, associative: bool = True, commutative: bool = True, zero: float = 0, precedence: int = 5, right_associative: bool = False):
 
         self._name = name
 
@@ -14,6 +14,7 @@ class BinaryOperation:
         self._commutative = commutative
         self._zero = zero
         self._precedence = precedence
+        self._right_associative = right_associative
 
     @property
     def name(self) -> str:
@@ -38,6 +39,10 @@ class BinaryOperation:
     @property
     def precedence(self) -> int:
         return self._precedence
+
+    @property
+    def right_associative(self) -> bool:
+        return self._right_associative
 
     @overload
     def calculate(self, A: Set, b: float, maintain: bool = True) -> Set: ...
