@@ -374,19 +374,20 @@ if __name__ == "__main__":
     # print("--------------------------------")
     # print(f.function_ast.simplify_ast().get_raw_expression())
     # print(f.simplify().get_raw_expression())
-    func = functions[-3]
-    print(func.name)
-    print(func.get_raw_expression())
-    print(func.simplify().get_raw_expression())
-    print(func.evaluate(0.1, 0.2))
-    print(func.derivative("x").simplify().get_raw_expression())
+    # func = functions[-3]
+    # print(func.name)
+    # print(func.get_raw_expression())
+    # print(func.simplify().get_raw_expression())
+    # print(func.evaluate(0.1, 0.2))
+    # print(func.derivative("x").simplify().get_raw_expression())
+    #
+    # print(functions[0].rearrange_to_constant("x", 0).get_raw_expression())
+    #
+    # print(functions[-1].evaluate(2))
+    # print(functions[-1].get_raw_expression())
+    # print(functions[-1].simplify().get_raw_expression())
+    #
+    # print(functions[1].substitute({"x":Matrix(((1, 0), (1, 1))), "y": Matrix(((0.1, 0.2), (0.3, 0.4)))}).get_raw_expression())
 
-    print(functions[0].rearrange_to_constant("x", 0).get_raw_expression())
-
-    print(functions[-1].evaluate(2))
     print(functions[-1].get_raw_expression())
-    print(functions[-1].simplify().get_raw_expression())
-
-    print(functions[1].substitute({"x":Matrix(((0.1, 0.2), (0.3, 0.4))), "y": 0.5}).get_raw_expression())
-
-    print(func.namespace.functions)
+    print(functions[-1].rearrange("x").substitute({"y": 0}).simplify().evaluate(1, -1, -1))

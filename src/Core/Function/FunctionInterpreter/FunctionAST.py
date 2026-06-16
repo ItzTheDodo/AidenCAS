@@ -10,8 +10,6 @@ from Core.Function.FunctionInterpreter.ASTNodes import (
     IdentifierNode,
     LiteralNode,
     _literal,
-    ProductNode,
-    SummationNode,
     _substitute,
     SimplificationContext,
     UnaryOperationNode,

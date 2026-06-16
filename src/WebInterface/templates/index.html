@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='assets/logo.ico') }}">
+    <title>AidenCAS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body class="main_container">
+    <div class="header">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="AidenCAS Logo" class="logo" />
+        <h1 class="title">AidenCAS</h1>
+    </div>
+    <div class="display">
+        <div class="sidebar" id="sidebar">
+
+            <div class="add_function_box" id="add_function_box" onclick="addFunctionOption()">
+                <p class="add_function_text">Add Function</p>
+            </div>
+
+        </div>
+        <canvas class="graphic_display" id="graphic_display">
+            Your browser does not support the HTML5 canvas tag.
+
+        </canvas>
+    </div>
+    <div class="footer">
+        <p class="footer_text">AidenCAS 2026 By Aiden Turner</p>
+    </div>
+</body>
+</html>
