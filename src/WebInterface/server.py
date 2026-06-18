@@ -24,6 +24,30 @@ def evaluate_function(name: str, point: float) -> tuple[bool, Any]:
     except Exception as e:
         return False, str(e)
 
+def batch_evaluate_points(name: str, points: list[float]) -> list[Any]:
+    return list(
+        evaluate_function(name, point)[1]
+        for point in points
+    )
+
+@app.route("/batch_evaluate")
+def batch_evaluate():
+    name = request.args.get("name")
+    points_str = request.args.get("points")
+
+    if not name:
+        return jsonify({"ok": False, "error": "Missing required query parameter: name"}), 400
+
+    if not points_str:
+        return jsonify({"ok": False, "error": "Missing required query parameter: points"}), 400
+
+    try:
+        points = list(map(float, points_str[1:-1].split(",")))
+        results = batch_evaluate_points(name, points)
+        return jsonify({"ok": True, "results": results})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
 @app.route("/evaluate")
 def evaluate():
     name = request.args.get("name")

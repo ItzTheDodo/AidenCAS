@@ -3,7 +3,7 @@
     --header-height: 10vh;
     --footer-height: 5vh;
     --header-footer-padding: 5px;
-    --sidebar-width: min(400px, 35vw);
+    --sidebar-width: min(350px, 35vw);
 }
 
 * {
@@ -32,6 +32,13 @@
     color: white;
     font-family: Arial, sans-serif;
     font-weight: bold;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.left_header {
+    display: flex;
     align-items: center;
     gap: 10px;
 }
@@ -75,7 +82,8 @@
 }
 
 .graphic_display {
-    width: calc(100vw - var(--sidebar-width));
+    width: fit-content;
+    height: fit-content;
 }
 
 .function_input_box, .add_function_box {
@@ -89,6 +97,30 @@
     height: max-content;
     flex-shrink: 0;
     justify-content: center;
+}
+
+.example_definition {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+}
+
+.example_box {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 10px;
+    gap: 5px;
+    position: relative;
+    height: max-content;
+    flex-shrink: 0;
+    background-color: #c1c1c1;
+}
+
+.example_function {
+    font-weight: bold;
 }
 
 .function_input_box {
@@ -162,4 +194,25 @@
 
 .function_input_has_error {
     border: #d11414 solid 2px!important;
+}
+
+.name {
+    color: #0077ff;
+}
+
+.domain_def {
+        color: #07bd3b;
+}
+
+.arguments {
+    color: #c900f8;
+}
+
+.expression {
+    color: #ff5900;
+}
+
+.example_explaination {
+    font-weight: bold;
+    text-indent: 60px;
 }
