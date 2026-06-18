@@ -11,6 +11,7 @@ class FiniteSet(Set):
 
     def __init__(self, *elements: float):
 
+        super().__init__()
         self._elements = list(set(elements))
 
     @property

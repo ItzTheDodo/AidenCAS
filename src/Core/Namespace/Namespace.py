@@ -11,7 +11,6 @@ from Core.Function.BinaryOperations.Power import Power
 from Core.Function.BinaryOperations.Subtraction import Subtraction
 from Core.NumberSystem.Domain import Domain
 from Core.NumberSystem.MatrixDomain import MatrixDomain
-from Core.NumberSystem.ScalarDomain import ScalarDomain
 from Core.Set.Integers import Integers
 from Core.Set.Interval import Interval
 from Core.Set.IntervalSet import IntervalSet
@@ -78,18 +77,27 @@ class Namespace:
     def load_defaults(self):
         from Core.Function.Exp import Exp
         from Core.Function.AggregateFunctions import Pi, Sigma
+        from Core.Function.ACos import ACos
+        from Core.Function.ASin import ASin
+        from Core.Function.ATan import ATan
+        from Core.Function.Cos import Cos
+        from Core.Function.Cot import Cot
+        from Core.Function.Csc import Csc
         from Core.Function.LambertW import LambertW
         from Core.Function.Logarithm import Logarithm
+        from Core.Function.Sec import Sec
+        from Core.Function.Sin import Sin
+        from Core.Function.Tan import Tan
 
-        self.add_set("|N", NaturalNumbers())
-        self.add_set("Z", Integers())
-        self.add_set("|Z", Integers())
-        self.add_set("|Q", Rationals())
-        self.add_set("Q", Rationals())
-        self.add_set("R", IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
-        self.add_set("|R", IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
-        self.add_set("R+", IntervalSet(Interval(0, float("inf"), True, True)))
-        self.add_set("LWdom", IntervalSet(Interval(-1 / math.e, float("inf"), True, True)))
+        self.add_domain("|N", NaturalNumbers())
+        self.add_domain("Z", Integers())
+        self.add_domain("|Z", Integers())
+        self.add_domain("|Q", Rationals())
+        self.add_domain("Q", Rationals())
+        self.add_domain("R", IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+        self.add_domain("|R", IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+        self.add_domain("R+", IntervalSet(Interval(0, float("inf"), True, True)))
+        self.add_domain("LWdom", IntervalSet(Interval(-1 / math.e, float("inf"), True, True)))
         self.add_domain("M2(R)", MatrixDomain("M2(R)", 2, 2))
         self.add_domain("GL2(R)", MatrixDomain("GL2(R)", 2, 2, invertible=True))
 
@@ -102,6 +110,15 @@ class Namespace:
         Exp(self)
         LambertW(self)
         Logarithm(self)
+        Sin(self)
+        Cos(self)
+        Tan(self)
+        Cot(self)
+        Sec(self)
+        Csc(self)
+        ASin(self)
+        ACos(self)
+        ATan(self)
         self.add_function("sigma", Sigma())
         self.add_function("pi", Pi())
 
@@ -122,12 +139,12 @@ class Namespace:
 
     def add_set(self, name: str, set_: Set):
         self._sets[name] = set_
-        self._domains[name] = ScalarDomain(name, set_)
+        self._domains[name] = set_
 
     def add_domain(self, name: str, domain: Domain):
         self._domains[name] = domain
-        if isinstance(domain, ScalarDomain):
-            self._sets[name] = domain.set
+        if isinstance(domain, Set):
+            self._sets[name] = domain
 
     def get_domain(self, name: str) -> Domain | None:
         return self._domains.get(name)

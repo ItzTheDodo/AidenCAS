@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from abc import abstractmethod
 
-class Set:
+from Core.NumberSystem.Domain import Domain
+
+
+class Set(Domain):
+
+    def __init__(self, name: str | None = None):
+        super().__init__(name if name is not None else type(self).__name__)
 
     def __str__(self) -> str: ...
 
@@ -19,6 +26,7 @@ class Set:
 
     def without(self, other: Set) -> Set: ...
 
+    @abstractmethod
     def contains(self, element: float) -> bool: ...
 
     def is_empty(self) -> bool: ...

@@ -19,6 +19,7 @@ Supported core syntax includes:
 - function calls: `f(x, y)`
 - aggregates: `sigma(i, a, b, body)` and `pi(i, a, b, body)` as callable builtin functions
 - matrix literals: `[[1,2],[3,4]]` (parsed into `Core.Matrix.Matrix`)
+- trig simplifications such as `sin(asin(x))` and `sin(x)^2 + cos(x)^2` are folded during AST simplification
 
 ## AST node families
 

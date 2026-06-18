@@ -19,7 +19,7 @@ By default a namespace loads:
 - binary operations: `+`, `-`, `*`, `/`, `^`
 - builtin functions: `exp`, `lambertw`, `log`, `sigma`, `pi`
 
-`add_set()` still works as a compatibility shortcut for scalar domains, while `add_domain()` is the OO path.
+`add_set()` still works as a compatibility shortcut, but `add_domain()` is the preferred OO path.
 
 ## Deferred functions
 

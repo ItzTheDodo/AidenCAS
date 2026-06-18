@@ -16,6 +16,9 @@ class Domain(ABC):
     def contains(self, value: Any) -> bool:
         raise NotImplementedError
 
+    def __contains__(self, value: Any) -> bool:
+        return self.contains(value)
+
     def __str__(self) -> str:
         return self.name
 

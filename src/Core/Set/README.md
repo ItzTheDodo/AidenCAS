@@ -31,9 +31,9 @@ The set subsystem provides the domain objects used for function validation and a
 
 ## Notes
 
+- Every set type is also a domain object now.
 - `Integers`, `NaturalNumbers`, and `Rationals` inherit from `IntervalSet`.
 - Membership checks are specialized where needed:
   - integers require integral values
   - naturals require positive integral values
   - rationals use a fraction-based approximation check
-

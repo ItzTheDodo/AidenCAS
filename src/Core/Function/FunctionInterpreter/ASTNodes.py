@@ -48,6 +48,95 @@ def _contains_matrix_literal(node: ExpressionNode) -> bool:
     return any(_contains_matrix_literal(child) for child in node.children)
 
 
+def _expression_namespace(node: ExpressionNode):
+    if isinstance(node, FunctionCallNode) and hasattr(node.function, "namespace"):
+        return node.function.namespace
+    for child in node.children:
+        namespace = _expression_namespace(child)
+        if namespace is not None:
+            return namespace
+    return None
+
+
+def _strip_negation(node: ExpressionNode) -> tuple[int, ExpressionNode]:
+    if isinstance(node, UnaryOperationNode) and isinstance(node.operation, Negation):
+        return -1, node.child
+    return 1, node
+
+
+def _match_squared_trig(node: ExpressionNode) -> tuple[str, ExpressionNode] | None:
+    if not isinstance(node, BinaryOperationNode) or not isinstance(node.operation, Power):
+        return None
+    if not isinstance(node.right, LiteralNode) or not _is_number(node.right.value) or node.right.value != 2:
+        return None
+    if not isinstance(node.left, FunctionCallNode) or len(node.left.arguments) != 1:
+        return None
+    if node.left.function.name not in {"sin", "cos", "tan", "sec", "csc", "cot"}:
+        return None
+    return node.left.function.name, node.left.arguments[0]
+
+
+def _build_trig_call(name: str, argument: ExpressionNode, namespace) -> ExpressionNode | None:
+    if namespace is None or name not in getattr(namespace, "functions", {}):
+        return None
+    return FunctionCallNode(namespace.functions[name], (argument,))
+
+
+def _apply_trig_identities(literal_total: float, ordered_terms: list[ExpressionNode]) -> ExpressionNode | None:
+    descriptors: list[tuple[int, str, str | None, ExpressionNode | None]] = []
+    for term in ordered_terms:
+        sign, base = _strip_negation(term)
+        if isinstance(base, LiteralNode):
+            if _is_number(base.value) and base.value == 0:
+                continue
+            descriptors.append((sign, "literal", None, base))
+            continue
+        match = _match_squared_trig(base)
+        if match is not None:
+            descriptors.append((sign, "trig", match[0], match[1]))
+            continue
+        descriptors.append((sign, "other", None, base))
+
+    if len(descriptors) != 2:
+        return None
+
+    literals = [item for item in descriptors if item[1] == "literal"]
+    trigs = [item for item in descriptors if item[1] == "trig"]
+
+    if len(trigs) == 2 and not literals:
+        (sign_a, _, name_a, arg_a), (sign_b, _, name_b, arg_b) = trigs
+        if arg_a is not None and arg_b is not None and arg_a.signature() == arg_b.signature():
+            if {name_a, name_b} == {"sin", "cos"} and sign_a == sign_b == 1:
+                return _literal(1)
+            if {name_a, name_b} in ({"sec", "tan"}, {"csc", "cot"}) and {sign_a, sign_b} == {1, -1}:
+                return _literal(1)
+
+    if len(literals) == 1 and len(trigs) == 1:
+        (lit_sign, _, _, lit_value), (trig_sign, _, trig_name, trig_arg) = literals[0], trigs[0]
+        if lit_value is not None and _is_number(lit_value.value) and lit_value.value == 1 and lit_sign == 1 and trig_sign == 1:
+            namespace = _expression_namespace(ordered_terms[0]) or _expression_namespace(ordered_terms[1])
+            if trig_name == "tan":
+                sec_call = _build_trig_call("sec", trig_arg, namespace)
+                if sec_call is not None:
+                    return BinaryOperationNode(Power(), sec_call, _literal(2))
+            if trig_name == "cot":
+                csc_call = _build_trig_call("csc", trig_arg, namespace)
+                if csc_call is not None:
+                    return BinaryOperationNode(Power(), csc_call, _literal(2))
+        if lit_value is not None and _is_number(lit_value.value) and lit_value.value == 1 and lit_sign == 1 and trig_sign == -1:
+            namespace = _expression_namespace(ordered_terms[0]) or _expression_namespace(ordered_terms[1])
+            if trig_name == "cos":
+                sin_call = _build_trig_call("sin", trig_arg, namespace)
+                if sin_call is not None:
+                    return BinaryOperationNode(Power(), sin_call, _literal(2))
+            if trig_name == "sin":
+                cos_call = _build_trig_call("cos", trig_arg, namespace)
+                if cos_call is not None:
+                    return BinaryOperationNode(Power(), cos_call, _literal(2))
+
+    return None
+
+
 def _format_number(value: float) -> str:
     """Render numeric values without trailing `.0` when possible."""
     if float(value).is_integer():
@@ -580,6 +669,24 @@ class FunctionCallNode(ExpressionNode):
                 return inner_call.arguments[0]
             if self.function.name == "log" and inner_call.function.name == "exp":
                 return inner_call.arguments[0]
+            if self.function.name == "sin" and inner_call.function.name == "asin":
+                return inner_call.arguments[0]
+            if self.function.name == "cos" and inner_call.function.name == "acos":
+                return inner_call.arguments[0]
+            if self.function.name == "tan" and inner_call.function.name == "atan":
+                return inner_call.arguments[0]
+            if self.function.name == "asin" and inner_call.function.name == "sin":
+                return inner_call.arguments[0]
+            if self.function.name == "acos" and inner_call.function.name == "cos":
+                return inner_call.arguments[0]
+            if self.function.name == "atan" and inner_call.function.name == "tan":
+                return inner_call.arguments[0]
+        if len(args) == 1 and isinstance(args[0], UnaryOperationNode) and isinstance(args[0].operation, Negation):
+            inner = args[0].child
+            if self.function.name in {"sin", "tan", "csc", "cot", "asin", "atan"}:
+                return UnaryOperationNode(Negation(), FunctionCallNode(self.function, (inner,))).simplify(context)
+            if self.function.name in {"cos", "sec"}:
+                return FunctionCallNode(self.function, (inner,)).simplify(context)
         if context.fold_constants and getattr(self.function, "is_resolved", True) and args and all(isinstance(arg, LiteralNode) for arg in args):
             return _literal(self.function.evaluate(*[arg.value for arg in args]))
         return FunctionCallNode(self.function, args)
@@ -610,9 +717,6 @@ class FunctionCallNode(ExpressionNode):
         if hasattr(self.function, "build_node"):
             return self.function.build_node(self.arguments).evaluate(namespace)
         values = [arg.evaluate(namespace) for arg in self.arguments]
-        if getattr(namespace, "_skip_domain_checks", False):
-            return self.function._evaluate_raw(*values)
-        self.function.check_domain(*values)
         return self.function.evaluate(*values)
 
     def to_expression(self) -> str:
@@ -863,6 +967,10 @@ class BinaryOperationNode(ExpressionNode):
                     ordered_terms.append(BinaryOperationNode(Multiplication(), _literal(coeff), base))
 
             ordered_terms.sort(key=_signature)
+
+            trig_identity = _apply_trig_identities(literal_total, ordered_terms)
+            if trig_identity is not None:
+                return trig_identity
 
             if not ordered_terms:
                 return _literal(0)

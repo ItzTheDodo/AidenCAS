@@ -34,6 +34,23 @@ h: R -> R; x -> sigma(i, 0, 5, (i*x))
 - Rearrange/invert supported expressions symbolically.
 - Work with scalar literals, matrix literals, and callable aggregate builtins.
 
+## Trigonometric builtins
+
+The namespace now includes `sin`, `cos`, `tan`, `cot`, `sec`, `csc`, `asin`, `acos`, and `atan`.
+
+Common simplifications include:
+
+- `sin(asin(x)) -> x`
+- `cos(acos(x)) -> x`
+- `tan(atan(x)) -> x`
+- `sin(-x) -> -sin(x)`
+- `cos(-x) -> cos(x)`
+- `sin(x)^2 + cos(x)^2 -> 1`
+- `1 + tan(x)^2 -> sec(x)^2`
+- `1 + cot(x)^2 -> csc(x)^2`
+- `sec(x)^2 - tan(x)^2 -> 1`
+- `csc(x)^2 - cot(x)^2 -> 1`
+
 ## Domains
 
-Function definitions now resolve their `domain -> codomain` names through namespace domain objects. That lets you register scalar domains, matrix spaces, or other algebraic structures before compiling a function.
+Function definitions now resolve their `domain -> codomain` names through namespace domain objects. That lets you register scalar sets, matrix spaces, or other algebraic structures before compiling a function.

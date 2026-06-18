@@ -71,4 +71,3 @@ if __name__ == "__main__":
 
     print(i.without(a))
     print(i.without(b))
-

@@ -8,6 +8,7 @@ class IntervalSet(Set):
 
     def __init__(self, *intervals: Interval):
 
+        super().__init__()
         self._intervals = list(intervals)
         self._clean()
 

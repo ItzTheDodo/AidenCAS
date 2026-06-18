@@ -58,12 +58,12 @@ class Function:
             from Core.Set.Interval import Interval
             from Core.Set.IntervalSet import IntervalSet
 
-            self.namespace.add_set(self._domain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+            self.namespace.add_domain(self._domain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
         if self.namespace.get_domain(self._codomain) is None:
             from Core.Set.Interval import Interval
             from Core.Set.IntervalSet import IntervalSet
 
-            self.namespace.add_set(self._codomain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
+            self.namespace.add_domain(self._codomain, IntervalSet(Interval(float("-inf"), float("inf"), True, True)))
 
         mapping_definition = mapping_definition.strip()
 
